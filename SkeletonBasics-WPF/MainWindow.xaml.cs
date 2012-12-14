@@ -6,61 +6,46 @@
 
 namespace Microsoft.Samples.Kinect.SkeletonBasics
 {
+    using System;
     using System.IO;
     using System.Windows;
     using System.Windows.Media;
     using Microsoft.Kinect;
-
+    using Microsoft.Win32;
     using System.Globalization;
 
-    /// <summary>
     /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        /// <summary>
         /// Width of output drawing
-        /// </summary>
         private const float RenderWidth = 640.0f;
 
-        /// <summary>
         /// Height of our output drawing
-        /// </summary>
         private const float RenderHeight = 480.0f;
 
-        /// <summary>
         /// Thickness of drawn joint lines
-        /// </summary>
         private const double JointThickness = 3;
 
-        /// <summary>
-        /// Thickness of body center ellipse
-        /// </summary>
-        private const double BodyCenterThickness = 10;
 
-         /// <summary>
         /// Brush used for drawing joints that are currently tracked
-        /// </summary>
         private readonly Brush trackedJointBrush = new SolidColorBrush(Color.FromArgb(255, 68, 192, 68));
-        
 
-        /// <summary>
+
         /// Active Kinect sensor
-        /// </summary>
         private KinectSensor sensor;
 
-        /// <summary>
+
         /// Drawing group for skeleton rendering output
-        /// </summary>
         private DrawingGroup drawingGroup;
 
-        /// <summary>
+
         /// Drawing image that we will display
-        /// </summary>
         private DrawingImage imageSource;
 
+        private Point[,] skelPoints;
 
-                private JointType[] types = { JointType.Head,
+
+        private JointType[] types = { JointType.Head,
                                       JointType.ShoulderCenter, JointType.ShoulderLeft, JointType.ShoulderRight, 
                                       JointType.ElbowLeft, JointType.ElbowRight,
                                       JointType.WristLeft, JointType.WristRight, 
@@ -69,9 +54,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                                       JointType.KneeLeft, JointType.KneeRight,
                                       JointType.AnkleLeft, JointType.AnkleRight };
 
-        /// <summary>
+
         /// Initializes a new instance of the MainWindow class.
-        /// </summary>
         public MainWindow()
         {
             InitializeComponent();
@@ -123,11 +107,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
         }
 
-        /// <summary>
+
         /// Execute shutdown tasks
-        /// </summary>
-        /// <param name="sender">object sending the event</param>
-        /// <param name="e">event arguments</param>
         private void WindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             if (null != this.sensor)
@@ -136,11 +117,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
         }
 
-        /// <summary>
+
         /// Event handler for Kinect sensor's SkeletonFrameReady event
-        /// </summary>
-        /// <param name="sender">object sending the event</param>
-        /// <param name="e">event arguments</param>
         private void SensorSkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
         {
             Skeleton[] skeletons = new Skeleton[0];
@@ -163,8 +141,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 {
                     foreach (Skeleton skel in skeletons)
                     {
-
-
                         if (skel.TrackingState == SkeletonTrackingState.Tracked)
                         {
 
@@ -178,27 +154,23 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                                 }
 
                                 frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
-
-
-                                Brush drawBrush = this.trackedJointBrush;
-
-                     
-                                dc.DrawEllipse(drawBrush, null, this.SkeletonPointToScreen(j), JointThickness, JointThickness);
+                                // output to file
+                                DrawJoint(dc, this.SkeletonPointToScreen(j));
                             }
-
                         }
                     }
-
-
                 }
             }
         }
-        
-        /// <summary>
+
+        private void DrawJoint(DrawingContext dc, Point p)
+        {
+            Brush drawBrush = this.trackedJointBrush;
+            dc.DrawEllipse(drawBrush, null, p, JointThickness, JointThickness);
+        }
+
+
         /// Maps a SkeletonPoint to lie within our render space and converts to Point
-        /// </summary>
-        /// <param name="skelpoint">point to map</param>
-        /// <returns>mapped point</returns>
         private Point SkeletonPointToScreen(SkeletonPoint skelpoint)
         {
             // Convert point to depth space.  
@@ -207,13 +179,69 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             return new Point(depthPoint.X, depthPoint.Y);
         }
 
-        private void Aufnahme_Click(object sender, RoutedEventArgs e)
+        // loads a textfile containing animation data and puts it in the skelPoints array.
+        private void loadAnimation_Click(object sender, RoutedEventArgs e)
         {
-            if(Aufnahme.Content.Equals("Aufnahme starten")){
-                Aufnahme.Content = "Aufnahme anhalten";
-            }
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
 
+            // Set filter for file extension and default file extension
+            dlg.DefaultExt = ".txt";
+            dlg.Filter = "Text documents (.txt)|*.txt";
+
+            // Display OpenFileDialog by calling ShowDialog method
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Get the selected file name and display in a TextBox
+            if (result == true)
+            {
+                // Open document
+                string filename = dlg.FileName;
+                openAnimationPath.Text = filename;
+
+                StreamReader stream = new StreamReader(filename);
+
+                string framesString = string.Empty;
+
+                while (!stream.EndOfStream)
+                {
+                    framesString += stream.ReadLine() + ";";
+                }
+
+                string[] frames = framesString.Split(';');
+
+                skelPoints = new Point[frames.Length, types.Length * 3];
+                for (int i = 0; i < frames.Length; i++)
+                {
+
+                    string[] points = frames[i].Split(',');
+                    for (int j = 0; j + 2 < points.Length; j += 3)
+                    {
+                        skelPoints[i, j] = new Point(double.Parse(points[j].Replace('.', ',')) * 500, double.Parse(points[j + 1].Replace('.', ',')) * -500);
+                    }
+                }
+            }
+        }
+
+
+        // plays the animation using drawing context.. or not
+        private void playButton_Click(object sender, RoutedEventArgs e)
+        {
+
+            for (int i = 0; i < skelPoints.GetLength(0)-1; i++)
+            {
+                using (DrawingContext dc = this.drawingGroup.Open())
+                {
+
+                    for (int j = 0; j < skelPoints.GetLength(1); j++)
+                    {
+                        DrawJoint(dc, skelPoints[i, j]);
+                    }
+
+                }
+
+                //System.Threading.Thread.Sleep(10);
+                // sleep geht nicht weil das bild noch nicht gezeichnet wurde -> blockiert ganzes programm.
+            }
         }
     }
-   
 }
