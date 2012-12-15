@@ -80,6 +80,13 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
+
+            combobox.Items.Add("Seilspringen");
+            combobox.Items.Add("Hampelmann");
+            combobox.SelectedItem="Seilspringen";
+
+            // Starteintrag der Combobox 
+             
             // Create the drawing group we'll use for drawing
             this.drawingGroup = new DrawingGroup();
 
@@ -119,7 +126,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
             if (null == this.sensor)
             {
-                this.statusBarText.Text = Properties.Resources.NoKinectReady;
+                //this.statusBarText.Text = Properties.Resources.NoKinectReady;
             }
         }
 
@@ -207,12 +214,14 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             return new Point(depthPoint.X, depthPoint.Y);
         }
 
-        private void Aufnahme_Click(object sender, RoutedEventArgs e)
-        {
-            if(Aufnahme.Content.Equals("Aufnahme starten")){
-                Aufnahme.Content = "Aufnahme anhalten";
-            }
+   
 
+        private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
+        {
+            if (AufnahmeStarten.Content.Equals("Aufnahme starten"))
+            {
+                AufnahmeStarten.Content = "Aufnahme anhalten";
+            }
         }
     }
    
