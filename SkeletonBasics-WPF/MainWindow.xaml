@@ -22,20 +22,23 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-       
-        <Viewbox Grid.Row="2" Stretch="Uniform" HorizontalAlignment="Center">
-            
+        <DockPanel Grid.Row="0" Margin="0 0 0 5">
+            <Button x:Name="AufnahmeStarten" Content="Aufnahme starten" HorizontalAlignment="Left" Click="AufnahmeStarten_Click" />
+            <TextBox Height="22" TextWrapping="Wrap" Text="Dateiname" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120"/>
+            <ComboBox x:Name="combobox" Height="22" VerticalAlignment="Top" HorizontalAlignment="Left" Width="120"/>
+            <Label Content=".txt" Height="26" VerticalAlignment="Top"/>
+
+        </DockPanel>
+        <Button x:Name="loadAnimation" Content="Open..." HorizontalAlignment="Left" Margin="657,-1,0,0" VerticalAlignment="Top" Width="75" Click="loadAnimation_Click"/>
+        <TextBox x:Name="openAnimationPath" HorizontalAlignment="Left" Height="23" Margin="452,-2,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="200"/>
+        <Button x:Name="playButton" Content="Play" HorizontalAlignment="Left" Margin="377,-1,0,0" VerticalAlignment="Top" Width="75" Click="playButton_Click"/>
+        <Viewbox Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,46" Grid.RowSpan="2">
+
             <Image Name="Image" Width="640" Height="480"/>
         </Viewbox>
-        <StatusBar Grid.Row="3" HorizontalAlignment="Stretch" Name="statusBar" VerticalAlignment="Bottom" Background="White" Foreground="{StaticResource MediumGreyBrush}">
-            <StatusBarItem Padding="0 0 0 10">
-                <TextBlock Name="statusBarText" Margin="-1 0 0 0">Click 'Seated' to change skeletal pipeline type!</TextBlock>
-            </StatusBarItem>
-        </StatusBar>
-        <Button x:Name="loadAnimation" Content="Open..." HorizontalAlignment="Left" Margin="657,91,0,0" Grid.Row="1" VerticalAlignment="Top" Width="75" Click="loadAnimation_Click"/>
-        <TextBox x:Name="openAnimationPath" HorizontalAlignment="Left" Height="23" Margin="452,90,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" Width="200"/>
-        <Button x:Name="playButton" Content="Play" HorizontalAlignment="Left" Margin="377,91,0,0" Grid.Row="1" VerticalAlignment="Top" Width="75" Click="playButton_Click"/>
+        <DockPanel Grid.Row="1" Margin="0,440,0,41">
+            <TextBox Height="193" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="732"/>
 
-
+        </DockPanel>
     </Grid>
 </Window>
