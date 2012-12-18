@@ -4,6 +4,7 @@
 // </copyright>
 //------------------------------------------------------------------------------
 
+using System.Windows;
 namespace Microsoft.Samples.Kinect.SkeletonBasics
 {
     using System;
@@ -55,6 +56,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                                       JointType.AnkleLeft, JointType.AnkleRight };
 
 
+        public delegate void FrameReadyHandler(object sender, FrameReadyEventArgs e);
+        public event FrameReadyHandler FrameReady;
+
         /// Initializes a new instance of the MainWindow class.
         public MainWindow()
         {
@@ -62,9 +66,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         }
 
 
+
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
-
+            System.Threading.Thread.CurrentThread.Name = "Start";
             combobox.Items.Add("Seilspringen");
             combobox.Items.Add("Hampelmann");
             combobox.SelectedItem = "Seilspringen";
@@ -124,6 +129,18 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
         }
 
+        public void FrameReadReady(object sender, FrameReadyEventArgs e)
+        {
+            Console.WriteLine("Draw " + System.Threading.Thread.CurrentThread.Name);
+           /* using (DrawingContext dc = this.drawingGroup.Open())
+            {
+                dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
+                 for (int j = 0; j < skelPoints.Length; j++)
+                 {
+                     DrawJoint(dc, skelPoints[i,j]);
+                 }
+            }*/
+        }
 
         /// Event handler for Kinect sensor's SkeletonFrameReady event
         private void SensorSkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
@@ -244,22 +261,51 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         // plays the animation using drawing context.. or not
         private void playButton_Click(object sender, RoutedEventArgs e)
         {
+            // set listener up
+           if (FrameReady == null)
+               FrameReady += new FrameReadyHandler(FrameReadReady);
 
+            // start reader
+           Console.WriteLine("Play " + System.Threading.Thread.CurrentThread.Name);
+            System.Threading.Thread b = new System.Threading.Thread(ReadFrames);
+            b.Name = "Read";
+            b.Start();
+            Console.WriteLine("Play2 " + System.Threading.Thread.CurrentThread.Name);
+        }
+
+        private void ReadFrames()
+        {
             for (int i = 0; i < skelPoints.GetLength(0) - 1; i++)
             {
-                using (DrawingContext dc = this.drawingGroup.Open())
-                {
+                // fire event
+                Console.WriteLine("Fire " + System.Threading.Thread.CurrentThread.Name);
+                FrameReady(this, new FrameReadyEventArgs(skelPoints, i));
 
-                    for (int j = 0; j < skelPoints.GetLength(1); j++)
-                    {
-                        DrawJoint(dc, skelPoints[i, j]);
-                    }
-
-                }
-
-                //System.Threading.Thread.Sleep(10);
-                // sleep geht nicht weil das bild noch nicht gezeichnet wurde -> blockiert ganzes programm.
+                System.Threading.Thread.Sleep(200);
             }
         }
+    }
+
+    public class FrameReadyEventArgs : EventArgs
+    {
+        int index;
+        Point[,] skelPoints;
+
+        public FrameReadyEventArgs(Point[,] skelPoints, int index)
+        {
+            this.skelPoints = skelPoints;
+            this.index = index;
+        }
+
+        public Point[,] getSkelPoints()
+        {
+            return skelPoints;
+        }
+
+        public int getIndex()
+        {
+            return index;
+        }
+
     }
 }
