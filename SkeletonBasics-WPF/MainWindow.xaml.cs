@@ -14,6 +14,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
     using Microsoft.Kinect;
     using Microsoft.Win32;
     using System.Globalization;
+    using System.Windows.Threading;
 
     /// Interaction logic for MainWindow.xaml
     public partial class MainWindow : Window
@@ -55,9 +56,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                                       JointType.KneeLeft, JointType.KneeRight,
                                       JointType.AnkleLeft, JointType.AnkleRight };
 
-
-        public delegate void FrameReadyHandler(object sender, FrameReadyEventArgs e);
-        public event FrameReadyHandler FrameReady;
+        private int currentFrame = -1;
+        private DispatcherTimer dispatcherTimer;
+        private bool forward = true;
 
         /// Initializes a new instance of the MainWindow class.
         public MainWindow()
@@ -69,7 +70,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
-            System.Threading.Thread.CurrentThread.Name = "Start";
             combobox.Items.Add("Seilspringen");
             combobox.Items.Add("Hampelmann");
             combobox.SelectedItem = "Seilspringen";
@@ -129,17 +129,30 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
         }
 
-        public void FrameReadReady(object sender, FrameReadyEventArgs e)
+        public void FrameReadReady(object sender, EventArgs e)
         {
-            Console.WriteLine("Draw " + System.Threading.Thread.CurrentThread.Name);
-           /* using (DrawingContext dc = this.drawingGroup.Open())
+
+            if (forward)
+                ++currentFrame;
+            else
+                --currentFrame;
+
+            if (currentFrame < skelPoints.GetLength(0) - 2 && currentFrame >= 0) // skip last frames
             {
-                dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-                 for (int j = 0; j < skelPoints.Length; j++)
-                 {
-                     DrawJoint(dc, skelPoints[i,j]);
-                 }
-            }*/
+                using (DrawingContext dc = this.drawingGroup.Open())
+                {
+                    // dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
+                    for (int j = 0; j < skelPoints.GetLength(1); j++)
+                    {
+                        DrawJoint(dc, skelPoints[currentFrame, j]);
+                    }
+                }
+            }
+            else
+            {
+                playButton.Content = "Play";
+                dispatcherTimer.Stop();
+            }
         }
 
         /// Event handler for Kinect sensor's SkeletonFrameReady event
@@ -251,7 +264,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     string[] points = frames[i].Split(',');
                     for (int j = 0; j + 2 < points.Length; j += 3)
                     {
-                        skelPoints[i, j] = new Point(double.Parse(points[j].Replace('.', ',')) * 500, double.Parse(points[j + 1].Replace('.', ',')) * -500);
+                        skelPoints[i, j] = new Point(double.Parse(points[j].Replace('.', ',')) * 200, double.Parse(points[j + 1].Replace('.', ',')) * -200);
                     }
                 }
             }
@@ -261,51 +274,44 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         // plays the animation using drawing context.. or not
         private void playButton_Click(object sender, RoutedEventArgs e)
         {
-            // set listener up
-           if (FrameReady == null)
-               FrameReady += new FrameReadyHandler(FrameReadReady);
-
-            // start reader
-           Console.WriteLine("Play " + System.Threading.Thread.CurrentThread.Name);
-            System.Threading.Thread b = new System.Threading.Thread(ReadFrames);
-            b.Name = "Read";
-            b.Start();
-            Console.WriteLine("Play2 " + System.Threading.Thread.CurrentThread.Name);
-        }
-
-        private void ReadFrames()
-        {
-            for (int i = 0; i < skelPoints.GetLength(0) - 1; i++)
+            if (playButton.Content.Equals("Play"))
             {
-                // fire event
-                Console.WriteLine("Fire " + System.Threading.Thread.CurrentThread.Name);
-                FrameReady(this, new FrameReadyEventArgs(skelPoints, i));
+                if (dispatcherTimer == null)
+                {
+                    dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
+                    dispatcherTimer.Tick += new EventHandler(FrameReadReady);
+                    dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 34);
+                }
 
-                System.Threading.Thread.Sleep(200);
+                dispatcherTimer.Start();
+                playButton.Content = "Pause";
+            }
+            else
+            {
+                dispatcherTimer.Stop();
+                playButton.Content = "Play";
             }
         }
-    }
 
-    public class FrameReadyEventArgs : EventArgs
-    {
-        int index;
-        Point[,] skelPoints;
-
-        public FrameReadyEventArgs(Point[,] skelPoints, int index)
+        private void directionButton_Click(object sender, RoutedEventArgs e)
         {
-            this.skelPoints = skelPoints;
-            this.index = index;
+            if (forward)
+            {
+                directionButton.Content = "<";
+                forward = false;
+            }
+            else
+            {
+                directionButton.Content = ">";
+                forward = true;
+            }
         }
 
-        public Point[,] getSkelPoints()
+        private void stopButton_Click(object sender, RoutedEventArgs e)
         {
-            return skelPoints;
+            dispatcherTimer.Stop();
+            dispatcherTimer = null;
+            currentFrame = -1;
         }
-
-        public int getIndex()
-        {
-            return index;
-        }
-
     }
 }
