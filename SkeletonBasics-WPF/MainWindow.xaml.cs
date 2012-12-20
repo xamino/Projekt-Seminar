@@ -73,7 +73,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             combobox.Items.Add("Seilspringen");
             combobox.Items.Add("Hampelmann");
             combobox.SelectedItem = "Seilspringen";
-
+            feedback.Text = "PJSSkeleton Application\n -----------------------";
             // Starteintrag der Combobox 
 
             // Create the drawing group we'll use for drawing
@@ -106,6 +106,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 try
                 {
                     this.sensor.Start();
+                    feedback.Text = feedback.Text + "\nKinect erkannt";
                 }
                 catch (IOException)
                 {
@@ -115,6 +116,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
             if (null == this.sensor)
             {
+                feedback.Text = feedback.Text + "\nKeine Kinect erkannt";
                 //this.statusBarText.Text = Properties.Resources.NoKinectReady;
             }
         }
@@ -141,7 +143,11 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             {
                 using (DrawingContext dc = this.drawingGroup.Open())
                 {
-                    // dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
+                    // Var for correctly sizing the background canvas
+                    int widthTop = (int)RenderWidth / 2;
+                    int heightTop = (int)RenderHeight / 2;
+                    // Draw background canvas
+                    dc.DrawRectangle(Brushes.Black, null, new Rect(-widthTop, -heightTop, widthTop*2, heightTop*2));
                     for (int j = 0; j < skelPoints.GetLength(1); j++)
                     {
                         DrawJoint(dc, skelPoints[currentFrame, j]);
@@ -193,6 +199,11 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                                 frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
                                 // output to file
                                 DrawJoint(dc, this.SkeletonPointToScreen(j));
+                                if (aufnahme)
+                                {
+                                    file.WriteLine(frame);
+                                }
+
                             }
                         }
                     }
@@ -202,7 +213,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private void DrawJoint(DrawingContext dc, Point p)
         {
+            // TODO: mystery call here, eliminate zero points
             Brush drawBrush = this.trackedJointBrush;
+            //Console.WriteLine("point: "+p);
             dc.DrawEllipse(drawBrush, null, p, JointThickness, JointThickness);
         }
 
@@ -216,16 +229,35 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             return new Point(depthPoint.X, depthPoint.Y);
         }
 
-
-
-        private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
-        {
-            if (AufnahmeStarten.Content.Equals("Aufnahme starten"))
+        private Skeleton[] skeletonData;
+        StreamWriter file;
+        Boolean aufnahme=false;
+        private void AufnahmeStarten_Click(object sender, RoutedEventArgs e) {
+            if (AufnahmeStarten.Content.Equals("\nAufnahme starten")) {
+               
+                String uebergabe = dateiname.Text;
+                if (uebergabe.Equals(""))
+                {
+                    feedback.Text = feedback.Text + "\nBitte geben Sie einen Dateinamen an";
+                }
+                else
+                {
+                    file = new StreamWriter(uebergabe + combobox.SelectedValue + ".txt");
+                    AufnahmeStarten.Content = "\nAufnahme beenden";
+                    aufnahme = true;
+                }
+                
+            }
+            else
             {
                 AufnahmeStarten.Content = "Aufnahme anhalten";
             }
-
-        }
+         }
+      
+    
+    
+               
+    
 
         // loads a textfile containing animation data and puts it in the skelPoints array.
         private void loadAnimation_Click(object sender, RoutedEventArgs e)
@@ -264,7 +296,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     string[] points = frames[i].Split(',');
                     for (int j = 0; j + 2 < points.Length; j += 3)
                     {
-                        skelPoints[i, j] = new Point(double.Parse(points[j].Replace('.', ',')) * 200, double.Parse(points[j + 1].Replace('.', ',')) * -200);
+                        // Scaling value for skeleton view
+                        int val = 200;
+                        skelPoints[i, j] = new Point(double.Parse(points[j].Replace('.', ',')) * val, double.Parse(points[j + 1].Replace('.', ',')) * -val);
                     }
                 }
             }
