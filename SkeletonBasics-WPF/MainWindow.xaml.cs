@@ -172,7 +172,7 @@
                             frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
 
                             //startDetection(skel);
-                            
+
                             // output to file
                             if (aufnahme)
                             {
@@ -192,7 +192,7 @@
         private bool cycleStart = false;
         private int cycle = 0;
         private bool cycleEnd = false;
-
+        private DispatcherTimer cyleTimer;
 
         // based on meters, timer limit missing
         //private void startDetection(skel)
@@ -223,6 +223,17 @@
             {
                 // start of a cycle detected
                 cycleStart = true;
+                if (cyleTimer == null)
+                {
+                    cyleTimer = new DispatcherTimer();
+                    cyleTimer.Tick += new EventHandler(CycleTimout);
+                    cyleTimer.Interval = new TimeSpan(0, 0, 0, 2, 500);
+                }
+
+                if (cyleTimer != null)
+                    cyleTimer.Start();
+
+
             }
             // Detect end of cycle following a start
             else if (cycleStart && !armsUp && !armsClose && !feetClose)
@@ -239,9 +250,19 @@
                 cycleStart = false;
                 cycleEnd = false;
                 ++cycle;
+                cyleTimer.Stop();
                 Console.WriteLine("Cycle Detected.");
             }
 
+        }
+
+        private void CycleTimout(object sender, EventArgs e)
+        {
+            cycleStart = false;
+            cycleEnd = false;
+            cycle = 0;
+            cyleTimer.Stop();
+            Console.WriteLine("Time out");
         }
 
         /// Maps a SkeletonPoint to lie within our render space and converts to Point
