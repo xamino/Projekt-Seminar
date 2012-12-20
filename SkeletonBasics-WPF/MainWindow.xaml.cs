@@ -144,7 +144,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             if (currentFrame < skelPoints.GetLength(0) - 2 && currentFrame >= 0) // skip last frames
             {
                     // Note: draw frame
-                    renderSkeleton(currentFrame, skelPoints);
+                    renderSkeleton(currentFrame, skelPoints,false);
             }
             else
             {
@@ -192,6 +192,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                             // Save data to copy for rendering:
                             copySkel[index] = j;
                             index++;
+
+
+
                             // ^^ done
                             if (frame.Length != 0)
                             {
@@ -207,7 +210,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
                         }
                         // Note: draw frame here
-                        renderSkeleton(currentFrame, this.SkeletonToScreen(copySkel));
+                        renderSkeleton(0, this.SkeletonToScreen(copySkel), true);
                     }
                 }
             }
@@ -226,7 +229,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             return retArr;
         }
 
-        private Skeleton[] skeletonData;
         StreamWriter file;
         Boolean aufnahme = false;
         private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
@@ -359,10 +361,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         /**
          * Method for painting the canvas. Leave all the paint stuff to me!
          * */
-        private void renderSkeleton(int frame, Point[,] animData)
+        private void renderSkeleton(int frame, Point[,] animData, Boolean scale)
         {
             // Define parameters for painting:
-            int scaling = 200;  // Scale skeleton points
+            int scaling = scale?200:1;  // Scale skeleton points
             int widthTop = (int)RenderWidth / 2;
             int heightTop = (int)RenderHeight / 2;
             // Do the actual painting:
@@ -373,8 +375,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 {
                     Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling);
                     // Check for occlusion
-                    if (p.X < -widthTop || p.X > widthTop * 2 || p.Y < -heightTop || p.Y > heightTop * 2)
-                        continue;
+                    //if (p.X < -widthTop || p.X > widthTop * 2 || p.Y < -heightTop || p.Y > heightTop * 2)
+                      //  continue;
                     dc.DrawEllipse(Brushes.Green, null, p, JointThickness, JointThickness);
                 }
             }
