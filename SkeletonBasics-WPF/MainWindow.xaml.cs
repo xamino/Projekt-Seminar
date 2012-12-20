@@ -1,11 +1,4 @@
-﻿//------------------------------------------------------------------------------
-// <copyright file="MainWindow.xaml.cs" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>
-//------------------------------------------------------------------------------
-
-using System.Windows;
-namespace Microsoft.Samples.Kinect.SkeletonBasics
+﻿namespace PJS.Skeleton
 {
     using System;
     using System.IO;
@@ -19,27 +12,18 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
     /// Interaction logic for MainWindow.xaml
     public partial class MainWindow : Window
     {
-        /// Width of output drawing
-        private const float RenderWidth = 640.0f;
-
-        /// Height of our output drawing
-        private const float RenderHeight = 480.0f;
-
-        /// Thickness of drawn joint lines
-        private const double JointThickness = 3;
-
+        private const float RenderWidth = 640.0f; // Width of output drawing
+        private const float RenderHeight = 480.0f;// Height of our output drawing
+        private const double JointThickness = 3; /// Thickness of drawn joint lines
 
         /// Brush used for drawing joints that are currently tracked
         private readonly Brush trackedJointBrush = new SolidColorBrush(Color.FromArgb(255, 68, 192, 68));
 
-
         /// Active Kinect sensor
         private KinectSensor sensor;
 
-
         /// Drawing group for skeleton rendering output
         private DrawingGroup drawingGroup;
-
 
         /// Drawing image that we will display
         private DrawingImage imageSource;
@@ -56,17 +40,15 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                                       JointType.KneeLeft, JointType.KneeRight,
                                       JointType.AnkleLeft, JointType.AnkleRight };
 
-        private int currentFrame = -1;
         private DispatcherTimer dispatcherTimer;
-        private bool forward = true;
+        private int playDirection = 0; // -1 back, 0 still, 1 forward
+        private bool changedValue = false;
 
         /// Initializes a new instance of the MainWindow class.
         public MainWindow()
         {
             InitializeComponent();
         }
-
-
 
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
@@ -106,7 +88,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 try
                 {
                     this.sensor.Start();
-                    feedback.Text = feedback.Text + "\nKinect erkannt";
+                    feedback.Text += "\nKinect erkannt";
                 }
                 catch (IOException)
                 {
@@ -116,7 +98,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
             if (null == this.sensor)
             {
-                feedback.Text = feedback.Text + "\nKeine Kinect erkannt";
+                feedback.Text += "\nKeine Kinect erkannt";
                 //this.statusBarText.Text = Properties.Resources.NoKinectReady;
             }
         }
@@ -133,33 +115,21 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         public void FrameReadReady(object sender, EventArgs e)
         {
+            changedValue = true;
 
-            if (forward)
-                ++currentFrame;
-            else
-                --currentFrame;
-
-                timeline.Value = currentFrame;
-
-            if (currentFrame < skelPoints.GetLength(0) - 2 && currentFrame >= 0) // skip last frames
-            {
-                    // Note: draw frame
-                    renderSkeleton(currentFrame, skelPoints,false);
-            }
-            else
-            {
-                playButton.Content = "Play";
-                dispatcherTimer.Stop();
-                dispatcherTimer = null;
-                if (forward)
-                {
-                    currentFrame = -1;
-                }
+            if (playDirection == 1)
+                if (timeline.Value >= timeline.Maximum)
+                    stopAnimation();
                 else
-                {
-                    currentFrame = skelPoints.GetLength(0) - 1;
-                }
-            }
+                    ++timeline.Value;
+
+            else if (playDirection == -1)
+                if (timeline.Value <= timeline.Minimum)
+                    stopAnimation();
+                else
+                    --timeline.Value;
+
+            changedValue = false;
         }
 
         /// Event handler for Kinect sensor's SkeletonFrameReady event
@@ -193,8 +163,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                             copySkel[index] = j;
                             index++;
 
-
-
                             // ^^ done
                             if (frame.Length != 0)
                             {
@@ -210,7 +178,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
                         }
                         // Note: draw frame here
-                        renderSkeleton(0, this.SkeletonToScreen(copySkel), true);
+                        renderSkeleton(0, this.SkeletonToScreen(copySkel), false);
                     }
                 }
             }
@@ -220,9 +188,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         private Point[,] SkeletonToScreen(SkeletonPoint[] skel)
         {
             // Convert point to depth space.  
-            Point[,] retArr = new Point[1,skel.Length];
+            Point[,] retArr = new Point[1, skel.Length];
             // We are not using depth directly, but we do want the points in our 640x480 output resolution.
-            for (int i =0; i < skel.Length; i++) {
+            for (int i = 0; i < skel.Length; i++)
+            {
                 DepthImagePoint depth = this.sensor.CoordinateMapper.MapSkeletonPointToDepthPoint(skel[i], DepthImageFormat.Resolution640x480Fps30);
                 retArr[0, i] = new Point(depth.X, depth.Y);
             }
@@ -293,7 +262,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     }
                 }
 
-                timeline.Maximum = skelPoints.GetLength(0);
+                timeline.Maximum = skelPoints.GetLength(0) - 1;
 
             }
         }
@@ -303,42 +272,92 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         private void playButton_Click(object sender, RoutedEventArgs e)
         {
             if (playButton.Content.Equals("Play") && skelPoints != null)
-            {
-                if (dispatcherTimer == null)
-                {
-                    dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
-                    dispatcherTimer.Tick += new EventHandler(FrameReadReady);
-                    dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 30);
-                }
-
-                dispatcherTimer.Start();
-                playButton.Content = "Pause";
-            }
+                playAnimation();
             else
-            {
-                if (dispatcherTimer != null)
-                {
-                    dispatcherTimer.Stop();
-                }
-                playButton.Content = "Play";
-            }
+                pauseAnimation();
         }
 
         private void directionButton_Click(object sender, RoutedEventArgs e)
         {
-            if (forward)
+            if (playDirection != -1)
             {
                 directionButton.Content = "<";
-                forward = false;
+                playDirection = -1;
             }
             else
             {
                 directionButton.Content = ">";
-                forward = true;
+                playDirection = 1;
             }
         }
 
         private void stopButton_Click(object sender, RoutedEventArgs e)
+        {
+            stopAnimation();
+        }
+
+        /**
+         * Method for painting the canvas. Leave all the paint stuff to me!
+         * */
+        private void renderSkeleton(int frame, Point[,] animData, Boolean scale)
+        {
+            // Define parameters for painting:
+            int scaling = scale ? 200 : 1;  // Scale skeleton points
+            int widthTop = (int)RenderWidth / 2;
+            int heightTop = (int)RenderHeight / 2;
+            // Do the actual painting:
+            using (DrawingContext dc = this.drawingGroup.Open())
+            {
+                dc.DrawRectangle(Brushes.Black, null, new Rect(-widthTop, -heightTop, widthTop * 2, heightTop * 2));
+                for (int i = 0; i < animData.GetLength(1); i++)
+                {
+                    Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling);
+                    // Check for occlusion
+                    //if (p.X < -widthTop || p.X > widthTop * 2 || p.Y < -heightTop || p.Y > heightTop * 2)
+                    //  continue;
+                    dc.DrawEllipse(Brushes.Green, null, p, JointThickness, JointThickness);
+                }
+            }
+        }
+
+        private void timeline_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!changedValue)
+                pauseAnimation();
+            renderSkeleton((int)timeline.Value, skelPoints, true);
+        }
+
+        private void playAnimation()
+        {
+            if (directionButton.Content.Equals(">"))
+                playDirection = 1;
+            else
+                playDirection = -1;
+
+            if (dispatcherTimer == null)
+            {
+                dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
+                dispatcherTimer.Tick += new EventHandler(FrameReadReady);
+                dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 31);
+            }
+
+            if (dispatcherTimer != null)
+                dispatcherTimer.Start();
+
+            playButton.Content = "Pause";
+        }
+
+        private void pauseAnimation()
+        {
+            if (dispatcherTimer != null)
+                dispatcherTimer.Stop();
+
+            playDirection = 0;
+
+            playButton.Content = "Play";
+        }
+
+        private void stopAnimation()
         {
             if (dispatcherTimer != null)
             {
@@ -348,38 +367,14 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
             playButton.Content = "Play";
 
-            if (forward)
-            {
-                currentFrame = -1;
-            }
-            else
-            {
-                currentFrame = skelPoints.GetLength(0) - 1;
-            }
-        }
+            playDirection = 0;
 
-        /**
-         * Method for painting the canvas. Leave all the paint stuff to me!
-         * */
-        private void renderSkeleton(int frame, Point[,] animData, Boolean scale)
-        {
-            // Define parameters for painting:
-            int scaling = scale?200:1;  // Scale skeleton points
-            int widthTop = (int)RenderWidth / 2;
-            int heightTop = (int)RenderHeight / 2;
-            // Do the actual painting:
-            using (DrawingContext dc = this.drawingGroup.Open())
-            {
-                dc.DrawRectangle(Brushes.Black, null, new Rect(-widthTop, -heightTop, widthTop*2, heightTop*2));
-                for (int i = 0; i < animData.GetLength(1); i++)
-                {
-                    Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling);
-                    // Check for occlusion
-                    //if (p.X < -widthTop || p.X > widthTop * 2 || p.Y < -heightTop || p.Y > heightTop * 2)
-                      //  continue;
-                    dc.DrawEllipse(Brushes.Green, null, p, JointThickness, JointThickness);
-                }
-            }
+            changedValue = true;
+            if (directionButton.Content.Equals(">"))
+                timeline.Value = 0;
+            else
+                timeline.Value = skelPoints.GetLength(0) - 1;
+            changedValue = false;
         }
     }
 }
