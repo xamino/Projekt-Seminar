@@ -137,6 +137,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             else
                 --currentFrame;
 
+                timeline.Value = currentFrame;
+
             if (currentFrame < skelPoints.GetLength(0) - 2 && currentFrame >= 0) // skip last frames
             {
                 using (DrawingContext dc = this.drawingGroup.Open())
@@ -275,7 +277,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                         skelPoints[i, k] = new Point(double.Parse(points[j].Replace('.', ',')) * 200, double.Parse(points[j + 1].Replace('.', ',')) * -200);
                        
                     }
-                }  
+                }
+
+                timeline.Maximum = skelPoints.GetLength(1);
+
             }
         }
 
@@ -289,7 +294,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 {
                     dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
                     dispatcherTimer.Tick += new EventHandler(FrameReadReady);
-                    dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 34);
+                    dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 30);
                 }
 
                 dispatcherTimer.Start();
