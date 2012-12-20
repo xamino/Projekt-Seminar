@@ -25,7 +25,7 @@
         </Grid.RowDefinitions>
         <DockPanel Grid.Row="0" Margin="0 0 0 5">
             <Button x:Name="AufnahmeStarten" Content="Aufnahme starten" HorizontalAlignment="Left" Click="AufnahmeStarten_Click" />
-            <TextBox Height="22" TextWrapping="Wrap" Text="Dateiname" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120"/>
+            <TextBox x:Name="dateiname" Height="22" TextWrapping="Wrap" Text="Dateiname" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120"/>
             <ComboBox x:Name="combobox" Height="22" VerticalAlignment="Top" HorizontalAlignment="Left" Width="120"/>
             <Label Content=".txt" Height="26" VerticalAlignment="Top"/>
         </DockPanel>
@@ -41,7 +41,7 @@
             <Image x:Name="Image" Width="640" Height="480"/>
         </Viewbox>
         <DockPanel Grid.Row="3" Margin="0,0,0,5">
-            <TextBox Height="90"  TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="732"/>
+            <TextBox x:Name="feedback" Height="90"  TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="732"/>
         </DockPanel>
         
     </Grid>

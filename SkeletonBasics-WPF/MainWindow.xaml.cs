@@ -73,7 +73,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             combobox.Items.Add("Seilspringen");
             combobox.Items.Add("Hampelmann");
             combobox.SelectedItem = "Seilspringen";
-
+            feedback.Text = "PJSSkeleton Application\n -----------------------";
             // Starteintrag der Combobox 
 
             // Create the drawing group we'll use for drawing
@@ -106,6 +106,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 try
                 {
                     this.sensor.Start();
+                    feedback.Text = feedback.Text + "\nKinect erkannt";
                 }
                 catch (IOException)
                 {
@@ -115,6 +116,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
             if (null == this.sensor)
             {
+                feedback.Text = feedback.Text + "\nKeine Kinect erkannt";
                 //this.statusBarText.Text = Properties.Resources.NoKinectReady;
             }
         }
@@ -141,14 +143,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
             if (currentFrame < skelPoints.GetLength(0) - 2 && currentFrame >= 0) // skip last frames
             {
-                using (DrawingContext dc = this.drawingGroup.Open())
-                {
-                    // dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-                    for (int j = 0; j < skelPoints.GetLength(1); j++)
-                    {
-                        DrawJoint(dc, skelPoints[currentFrame, j]);
-                    }
-                }
+                    // Note: draw frame
+                    renderSkeleton(currentFrame, skelPoints);
             }
             else
             {
@@ -180,62 +176,79 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 }
             }
 
-            using (DrawingContext dc = this.drawingGroup.Open())
+            if (skeletons.Length != 0)
             {
-                // Draw a transparent background to set the render size
-                dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-
-                if (skeletons.Length != 0)
+                foreach (Skeleton skel in skeletons)
                 {
-                    foreach (Skeleton skel in skeletons)
+                    if (skel.TrackingState == SkeletonTrackingState.Tracked)
                     {
-                        if (skel.TrackingState == SkeletonTrackingState.Tracked)
+                        string frame = "";
+                        // Array to save data for rendering
+                        SkeletonPoint[] copySkel = new SkeletonPoint[types.Length];
+                        int index = 0;
+                        foreach (var joint in types)
                         {
-
-                            string frame = "";
-                            foreach (var joint in types)
+                            SkeletonPoint j = skel.Joints[joint].Position;
+                            // Save data to copy for rendering:
+                            copySkel[index] = j;
+                            index++;
+                            // ^^ done
+                            if (frame.Length != 0)
                             {
-                                SkeletonPoint j = skel.Joints[joint].Position;
-                                if (frame.Length != 0)
-                                {
-                                    frame += ",";
-                                }
-
-                                frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
-                                // output to file
-                                DrawJoint(dc, this.SkeletonPointToScreen(j));
+                                frame += ",";
                             }
+
+                            frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
+                            // output to file
+                            if (aufnahme)
+                            {
+                                file.WriteLine(frame);
+                            }
+
                         }
+                        // Note: draw frame here
+                        renderSkeleton(currentFrame, this.SkeletonToScreen(copySkel));
                     }
                 }
             }
         }
 
-        private void DrawJoint(DrawingContext dc, Point p)
-        {
-            Brush drawBrush = this.trackedJointBrush;
-            dc.DrawEllipse(drawBrush, null, p, JointThickness, JointThickness);
-        }
-
-
         /// Maps a SkeletonPoint to lie within our render space and converts to Point
-        private Point SkeletonPointToScreen(SkeletonPoint skelpoint)
+        private Point[,] SkeletonToScreen(SkeletonPoint[] skel)
         {
             // Convert point to depth space.  
+            Point[,] retArr = new Point[1,skel.Length];
             // We are not using depth directly, but we do want the points in our 640x480 output resolution.
-            DepthImagePoint depthPoint = this.sensor.CoordinateMapper.MapSkeletonPointToDepthPoint(skelpoint, DepthImageFormat.Resolution640x480Fps30);
-            return new Point(depthPoint.X, depthPoint.Y);
+            for (int i =0; i < skel.Length; i++) {
+                DepthImagePoint depth = this.sensor.CoordinateMapper.MapSkeletonPointToDepthPoint(skel[i], DepthImageFormat.Resolution640x480Fps30);
+                retArr[0, i] = new Point(depth.X, depth.Y);
+            }
+            return retArr;
         }
 
-
-
+        private Skeleton[] skeletonData;
+        StreamWriter file;
+        Boolean aufnahme = false;
         private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
         {
-            if (AufnahmeStarten.Content.Equals("Aufnahme starten"))
+            if (AufnahmeStarten.Content.Equals("\nAufnahme starten"))
+            {
+                String uebergabe = dateiname.Text;
+                if (uebergabe.Equals(""))
+                {
+                    feedback.Text = feedback.Text + "\nBitte geben Sie einen Dateinamen an";
+                }
+                else
+                {
+                    file = new StreamWriter(uebergabe + combobox.SelectedValue + ".txt");
+                    AufnahmeStarten.Content = "\nAufnahme beenden";
+                    aufnahme = true;
+                }
+            }
+            else
             {
                 AufnahmeStarten.Content = "Aufnahme anhalten";
             }
-
         }
 
         // loads a textfile containing animation data and puts it in the skelPoints array.
@@ -268,14 +281,13 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
                 string[] frames = framesString.Split(';');
 
-                skelPoints = new Point[frames.Length-1, types.Length];
+                skelPoints = new Point[frames.Length - 1, types.Length];
                 for (int i = 0; i < frames.Length - 1; i++)
                 {
                     string[] points = frames[i].Split(',');
-                    for (int j = 0, k = 0; j + 2  < points.Length; k++, j+=3)
+                    for (int j = 0, k = 0; j + 2 < points.Length; k++, j += 3)
                     {
-                        skelPoints[i, k] = new Point(double.Parse(points[j].Replace('.', ',')) * 200, double.Parse(points[j + 1].Replace('.', ',')) * -200);
-                       
+                        skelPoints[i, k] = new Point(double.Parse(points[j].Replace('.', ',')), -double.Parse(points[j + 1].Replace('.', ',')));
                     }
                 }
 
@@ -341,6 +353,27 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             else
             {
                 currentFrame = skelPoints.GetLength(0) - 1;
+            }
+        }
+
+        /**
+         * Method for painting the canvas. Leave all the paint stuff to me!
+         * */
+        private void renderSkeleton(int frame, Point[,] animData)
+        {
+            // Define parameters for painting:
+            int scaling = 200;  // Scale skeleton points
+            int widthTop = (int)RenderWidth / 2;
+            int heightTop = (int)RenderHeight / 2;
+            // Do the actual painting:
+            using (DrawingContext dc = this.drawingGroup.Open())
+            {
+                dc.DrawRectangle(Brushes.Black, null, new Rect(-widthTop, -heightTop, widthTop*2, heightTop*2));
+                for (int i = 0; i < animData.GetLength(1); i++)
+                {
+                    Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling);
+                    dc.DrawEllipse(Brushes.Green, null, p, JointThickness, JointThickness);
+                }
             }
         }
     }
