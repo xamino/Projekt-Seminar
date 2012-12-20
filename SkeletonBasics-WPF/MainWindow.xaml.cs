@@ -291,7 +291,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     }
                 }
 
-                timeline.Maximum = skelPoints.GetLength(1);
+                timeline.Maximum = skelPoints.GetLength(0);
 
             }
         }
