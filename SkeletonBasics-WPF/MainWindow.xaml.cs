@@ -152,6 +152,15 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             {
                 playButton.Content = "Play";
                 dispatcherTimer.Stop();
+                dispatcherTimer = null;
+                if (forward)
+                {
+                    currentFrame = -1;
+                }
+                else
+                {
+                    currentFrame = skelPoints.GetLength(0) - 1;
+                }
             }
         }
 
@@ -257,16 +266,16 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
                 string[] frames = framesString.Split(';');
 
-                skelPoints = new Point[frames.Length, types.Length * 3];
-                for (int i = 0; i < frames.Length; i++)
+                skelPoints = new Point[frames.Length-1, types.Length];
+                for (int i = 0; i < frames.Length - 1; i++)
                 {
-
                     string[] points = frames[i].Split(',');
-                    for (int j = 0; j + 2 < points.Length; j += 3)
+                    for (int j = 0, k = 0; j + 2  < points.Length; k++, j+=3)
                     {
-                        skelPoints[i, j] = new Point(double.Parse(points[j].Replace('.', ',')) * 200, double.Parse(points[j + 1].Replace('.', ',')) * -200);
+                        skelPoints[i, k] = new Point(double.Parse(points[j].Replace('.', ',')) * 200, double.Parse(points[j + 1].Replace('.', ',')) * -200);
+                       
                     }
-                }
+                }  
             }
         }
 
@@ -274,7 +283,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         // plays the animation using drawing context.. or not
         private void playButton_Click(object sender, RoutedEventArgs e)
         {
-            if (playButton.Content.Equals("Play"))
+            if (playButton.Content.Equals("Play") && skelPoints != null)
             {
                 if (dispatcherTimer == null)
                 {
@@ -288,7 +297,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
             else
             {
-                dispatcherTimer.Stop();
+                if (dispatcherTimer != null)
+                {
+                    dispatcherTimer.Stop();
+                }
                 playButton.Content = "Play";
             }
         }
@@ -309,9 +321,22 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private void stopButton_Click(object sender, RoutedEventArgs e)
         {
-            dispatcherTimer.Stop();
-            dispatcherTimer = null;
-            currentFrame = -1;
+            if (dispatcherTimer != null)
+            {
+                dispatcherTimer.Stop();
+                dispatcherTimer = null;
+            }
+
+            playButton.Content = "Play";
+
+            if (forward)
+            {
+                currentFrame = -1;
+            }
+            else
+            {
+                currentFrame = skelPoints.GetLength(0) - 1;
+            }
         }
     }
 }
