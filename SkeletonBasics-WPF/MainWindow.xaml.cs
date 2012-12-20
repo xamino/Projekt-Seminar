@@ -170,9 +170,13 @@
                             }
 
                             frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
+
+                            //startDetection(skel);
+                            
                             // output to file
                             if (aufnahme)
                             {
+                                //if (cycle > 10 && cycle =< 20)
                                 file.WriteLine(frame);
                             }
 
@@ -182,6 +186,62 @@
                     }
                 }
             }
+        }
+
+
+        private bool cycleStart = false;
+        private int cycle = 0;
+        private bool cycleEnd = false;
+
+
+        // based on meters, timer limit missing
+        //private void startDetection(skel)
+        private void startDetection(Point[,] skel, int f)
+        {
+            /*
+            SkeletonPoint head = skel.Joints[JointType.Head].Position;
+            SkeletonPoint leftWrist = skel.Joints[JointType.WristLeft].Position;
+            SkeletonPoint rightWrist = skel.Joints[JointType.WristRight].Position;
+            SkeletonPoint leftFoot = skel.Joints[JointType.AnkleLeft].Position;
+            SkeletonPoint rightFoot = skel.Joints[JointType.AnkleRight].Position;
+            */
+
+            Point head = skel[f, 0];
+            Point leftWrist = skel[f, 6];
+            Point rightWrist = skel[f, 7];
+            Point leftFoot = skel[f, 14];
+            Point rightFoot = skel[f, 15];
+
+            // wrists should be above head
+            bool armsUp = leftWrist.Y < head.Y && rightWrist.Y < head.Y ? true : false; // < because coordsystem
+            // arms should be close together
+            bool armsClose = Math.Abs(leftWrist.X - rightWrist.X) < 0.4 ? true : false;
+            // feet should be close together
+            bool feetClose = Math.Abs(rightFoot.X - leftFoot.X) < 0.2 ? true : false;
+
+            if (!cycleStart && armsUp && armsClose && feetClose) // detect start
+            {
+                // start of a cycle detected
+                cycleStart = true;
+            }
+            // Detect end of cycle following a start
+            else if (cycleStart && !armsUp && !armsClose && !feetClose)
+            {
+                cycleEnd = true;
+                cycleStart = false;
+
+                return;
+            }
+
+
+            if (cycleStart && cycleEnd)
+            {
+                cycleStart = false;
+                cycleEnd = false;
+                ++cycle;
+                Console.WriteLine("Cycle Detected.");
+            }
+
         }
 
         /// Maps a SkeletonPoint to lie within our render space and converts to Point
@@ -199,7 +259,7 @@
         }
 
         StreamWriter file;
-        Boolean aufnahme = false;
+        bool aufnahme = false;
         private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
         {
             if (AufnahmeStarten.Content.Equals("\nAufnahme starten"))
@@ -324,6 +384,7 @@
         {
             if (!changedValue)
                 pauseAnimation();
+            startDetection(skelPoints, (int)timeline.Value);
             renderSkeleton((int)timeline.Value, skelPoints, true);
         }
 
@@ -338,7 +399,7 @@
             {
                 dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
                 dispatcherTimer.Tick += new EventHandler(FrameReadReady);
-                dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 31);
+                dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 50);
             }
 
             if (dispatcherTimer != null)
