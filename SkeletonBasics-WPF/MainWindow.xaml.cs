@@ -372,6 +372,9 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 for (int i = 0; i < animData.GetLength(1); i++)
                 {
                     Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling);
+                    // Check for occlusion
+                    if (p.X < -widthTop || p.X > widthTop * 2 || p.Y < -heightTop || p.Y > heightTop * 2)
+                        continue;
                     dc.DrawEllipse(Brushes.Green, null, p, JointThickness, JointThickness);
                 }
             }
