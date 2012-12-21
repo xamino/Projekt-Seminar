@@ -93,6 +93,7 @@
                     Console.WriteLine(this.sensor.ElevationAngle);
                     this.sensor.ElevationAngle = 0; // set kinect angle relative to gravity force
                     Console.WriteLine(this.sensor.ElevationAngle);
+
                 }
                 catch (IOException)
                 {
@@ -175,13 +176,24 @@
 
                             frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
 
-                            startDetection(skel);
                         }
                         // output to file
                         if (aufnahme)
                         {
-                            //if (cycle > 10 && cycle =< 20)
-                            file.WriteLine(frame);
+                            startDetection(skel);
+                            if (cycle > 10 && cycle <= 20)
+                                file.WriteLine(frame);
+
+                            if (cycle > 20)
+                            {
+                                aufnahme = false;
+                                if (file != null)
+                                {
+                                    file.Close();
+                                }
+                                cycle = 0;
+                                AufnahmeStarten.Content = "Aufnahme starten";
+                            }
                         }
                         // Note: draw frame here
                         renderSkeleton(0, this.SkeletonToScreen(copySkel), false);
@@ -197,7 +209,8 @@
         private DispatcherTimer cyleTimer;
 
         // based on meters, timer limit missing
-        private void startDetection(Skeleton skel){
+        private void startDetection(Skeleton skel)
+        {
             SkeletonPoint head = skel.Joints[JointType.Head].Position;
             SkeletonPoint leftWrist = skel.Joints[JointType.WristLeft].Position;
             SkeletonPoint rightWrist = skel.Joints[JointType.WristRight].Position;
@@ -208,7 +221,7 @@
 
         }
         private void startDetection(Point[,] skel, int f)
-        {           
+        {
             Point head = skel[f, 0];
             Point leftWrist = skel[f, 6];
             Point rightWrist = skel[f, 7];
@@ -218,13 +231,18 @@
             detect(head, leftWrist, rightWrist, leftFoot, rightFoot);
         }
 
-        private void detect(Point head, Point leftWrist, Point rightWrist, Point leftFoot, Point rightFoot){
+        private void detect(Point head, Point leftWrist, Point rightWrist, Point leftFoot, Point rightFoot)
+        {
             // wrists should be above head
-            bool armsUp = leftWrist.Y < head.Y && rightWrist.Y < head.Y ? true : false; // < because coordsystem
+            bool armsUp = leftWrist.Y > head.Y && rightWrist.Y > head.Y ? true : false; // < because coordsystem
             // arms should be close together
             bool armsClose = Math.Abs(leftWrist.X - rightWrist.X) < 0.4 ? true : false;
             // feet should be close together
             bool feetClose = Math.Abs(rightFoot.X - leftFoot.X) < 0.2 ? true : false;
+
+            //Console.WriteLine("Arms up " + armsUp);
+            //Console.WriteLine("Arms close " + armsClose);
+            //Console.WriteLine("Feet close " + feetClose);
 
             if (!cycleStart && armsUp && armsClose && feetClose) // detect start
             {
@@ -240,14 +258,14 @@
                 if (cyleTimer != null)
                     cyleTimer.Start();
 
-
+                //Console.WriteLine("Start det"); 
             }
             // Detect end of cycle following a start
             else if (cycleStart && !armsUp && !armsClose && !feetClose)
             {
                 cycleEnd = true;
                 cycleStart = false;
-
+                // Console.WriteLine("End det"); 
                 return;
             }
 
@@ -258,7 +276,7 @@
                 cycleEnd = false;
                 ++cycle;
                 cyleTimer.Stop();
-                Console.WriteLine("Cycle " + cycle +  " Detected.");
+                Console.WriteLine("Cycle " + cycle + " Detected.");
             }
 
         }
@@ -270,6 +288,18 @@
             cycle = 0;
             cyleTimer.Stop();
             Console.WriteLine("Time out");
+
+            if (aufnahme)
+            {
+                aufnahme = false;
+                AufnahmeStarten.Content = "Aufnahme starten";
+                feedback.Text += "\nAufname wegen timeout gestoppt.";
+                if (file != null)
+                {
+                    file.Close();
+                }
+            }
+
         }
 
         /// Maps a SkeletonPoint to lie within our render space and converts to Point
@@ -306,8 +336,11 @@
             }
             else
             {
-                AufnahmeStarten.Content = "Aufnahme anhalten";
+                AufnahmeStarten.Content = "Aufnahme starten";
                 aufnahme = false;
+                if (file != null)
+                    file.Close();
+
             }
         }
 
@@ -347,11 +380,11 @@
                     string[] points = frames[i].Split(',');
                     for (int j = 0, k = 0; j + 2 < points.Length; k++, j += 3)
                     {
-                        skelPoints[i, k] = new Point(double.Parse(points[j].Replace('.', ',')), -double.Parse(points[j + 1].Replace('.', ',')));
+                        skelPoints[i, k] = new Point(double.Parse(points[j].Replace('.', ',')), double.Parse(points[j + 1].Replace('.', ',')));
                     }
                 }
 
-                timeline.Maximum = skelPoints.GetLength(0) - 1;
+                timeline.Maximum = skelPoints.GetLength(0) - 2;
 
             }
         }
@@ -398,6 +431,7 @@
             int scaling = scale ? 200 : 1;  // Scale skeleton points
             int x = scale ? -(int)RenderWidth / 2 : 0;
             int y = scale ? -(int)RenderHeight / 2 : 0;
+            int inverse = scale ? -1 : 1;
             // Do the actual painting:
             using (DrawingContext dc = this.drawingGroup.Open())
             {
@@ -406,10 +440,10 @@
 
                 for (int i = 0; i < animData.GetLength(1); i++)
                 {
-                    Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling);
+                    Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling * inverse);
                     // Check for occlusion
                     if (p.X < x || p.X > RenderWidth || p.Y < y || p.Y > RenderHeight)
-                      continue;
+                        continue;
                     dc.DrawEllipse(Brushes.Green, null, p, JointThickness, JointThickness);
                 }
             }
@@ -464,6 +498,7 @@
             playButton.Content = "Play";
 
             playDirection = 0;
+            cycle = 0;
 
             changedValue = true;
             if (directionButton.Content.Equals(">"))
