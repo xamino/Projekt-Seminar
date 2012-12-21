@@ -89,6 +89,10 @@
                 {
                     this.sensor.Start();
                     feedback.Text += "\nKinect erkannt";
+
+                    Console.WriteLine(this.sensor.ElevationAngle);
+                    this.sensor.ElevationAngle = 0; // set kinect angle relative to gravity force
+                    Console.WriteLine(this.sensor.ElevationAngle);
                 }
                 catch (IOException)
                 {
@@ -171,15 +175,13 @@
 
                             frame += j.X.ToString(CultureInfo.InvariantCulture) + "," + j.Y.ToString(CultureInfo.InvariantCulture) + "," + j.Z.ToString(CultureInfo.InvariantCulture);
 
-                            //startDetection(skel);
-
-                            // output to file
-                            if (aufnahme)
-                            {
-                                //if (cycle > 10 && cycle =< 20)
-                                file.WriteLine(frame);
-                            }
-
+                            startDetection(skel);
+                        }
+                        // output to file
+                        if (aufnahme)
+                        {
+                            //if (cycle > 10 && cycle =< 20)
+                            file.WriteLine(frame);
                         }
                         // Note: draw frame here
                         renderSkeleton(0, this.SkeletonToScreen(copySkel), false);
@@ -195,23 +197,28 @@
         private DispatcherTimer cyleTimer;
 
         // based on meters, timer limit missing
-        //private void startDetection(skel)
-        private void startDetection(Point[,] skel, int f)
-        {
-            /*
+        private void startDetection(Skeleton skel){
             SkeletonPoint head = skel.Joints[JointType.Head].Position;
             SkeletonPoint leftWrist = skel.Joints[JointType.WristLeft].Position;
             SkeletonPoint rightWrist = skel.Joints[JointType.WristRight].Position;
             SkeletonPoint leftFoot = skel.Joints[JointType.AnkleLeft].Position;
             SkeletonPoint rightFoot = skel.Joints[JointType.AnkleRight].Position;
-            */
 
+            detect(SkeletonPointToPoint(head), SkeletonPointToPoint(leftWrist), SkeletonPointToPoint(rightWrist), SkeletonPointToPoint(leftFoot), SkeletonPointToPoint(rightFoot));
+
+        }
+        private void startDetection(Point[,] skel, int f)
+        {           
             Point head = skel[f, 0];
             Point leftWrist = skel[f, 6];
             Point rightWrist = skel[f, 7];
             Point leftFoot = skel[f, 14];
             Point rightFoot = skel[f, 15];
 
+            detect(head, leftWrist, rightWrist, leftFoot, rightFoot);
+        }
+
+        private void detect(Point head, Point leftWrist, Point rightWrist, Point leftFoot, Point rightFoot){
             // wrists should be above head
             bool armsUp = leftWrist.Y < head.Y && rightWrist.Y < head.Y ? true : false; // < because coordsystem
             // arms should be close together
@@ -251,7 +258,7 @@
                 cycleEnd = false;
                 ++cycle;
                 cyleTimer.Stop();
-                Console.WriteLine("Cycle Detected.");
+                Console.WriteLine("Cycle " + cycle +  " Detected.");
             }
 
         }
@@ -283,7 +290,7 @@
         bool aufnahme = false;
         private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
         {
-            if (AufnahmeStarten.Content.Equals("\nAufnahme starten"))
+            if (AufnahmeStarten.Content.Equals("Aufnahme starten"))
             {
                 String uebergabe = dateiname.Text;
                 if (uebergabe.Equals(""))
@@ -293,13 +300,14 @@
                 else
                 {
                     file = new StreamWriter(uebergabe + combobox.SelectedValue + ".txt");
-                    AufnahmeStarten.Content = "\nAufnahme beenden";
+                    AufnahmeStarten.Content = "Aufnahme beenden";
                     aufnahme = true;
                 }
             }
             else
             {
                 AufnahmeStarten.Content = "Aufnahme anhalten";
+                aufnahme = false;
             }
         }
 
@@ -348,6 +356,10 @@
             }
         }
 
+        private Point SkeletonPointToPoint(SkeletonPoint sp)
+        {
+            return new Point(sp.X, sp.Y);
+        }
 
         // plays the animation using drawing context.. or not
         private void playButton_Click(object sender, RoutedEventArgs e)
@@ -384,18 +396,20 @@
         {
             // Define parameters for painting:
             int scaling = scale ? 200 : 1;  // Scale skeleton points
-            int widthTop = (int)RenderWidth / 2;
-            int heightTop = (int)RenderHeight / 2;
+            int x = scale ? -(int)RenderWidth / 2 : 0;
+            int y = scale ? -(int)RenderHeight / 2 : 0;
             // Do the actual painting:
             using (DrawingContext dc = this.drawingGroup.Open())
             {
-                dc.DrawRectangle(Brushes.Black, null, new Rect(-widthTop, -heightTop, widthTop * 2, heightTop * 2));
+
+                dc.DrawRectangle(Brushes.Black, null, new Rect(x, y, RenderWidth, RenderHeight));
+
                 for (int i = 0; i < animData.GetLength(1); i++)
                 {
                     Point p = new Point(animData[frame, i].X * scaling, animData[frame, i].Y * scaling);
                     // Check for occlusion
-                    //if (p.X < -widthTop || p.X > widthTop * 2 || p.Y < -heightTop || p.Y > heightTop * 2)
-                    //  continue;
+                    if (p.X < x || p.X > RenderWidth || p.Y < y || p.Y > RenderHeight)
+                      continue;
                     dc.DrawEllipse(Brushes.Green, null, p, JointThickness, JointThickness);
                 }
             }
