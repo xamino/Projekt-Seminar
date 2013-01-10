@@ -54,8 +54,9 @@
         {
             combobox.Items.Add("Seilspringen");
             combobox.Items.Add("Hampelmann");
-            combobox.SelectedItem = "Seilspringen";
-            feedback.Text = "PJSSkeleton Application\n -----------------------";
+            combobox.Items.Add("Eigenes");
+            combobox.SelectedItem = "Hampelmann";
+            println("PJSSkeleton Application\n -----------------------");
             // Starteintrag der Combobox 
 
             // Create the drawing group we'll use for drawing
@@ -88,7 +89,7 @@
                 try
                 {
                     this.sensor.Start();
-                    feedback.Text += "\nKinect erkannt";
+                    println("Kinect erkannt");
 
                     Console.WriteLine(this.sensor.ElevationAngle);
                     this.sensor.ElevationAngle = 0; // set kinect angle relative to gravity force
@@ -103,7 +104,7 @@
 
             if (null == this.sensor)
             {
-                feedback.Text += "\nKeine Kinect erkannt";
+                println("Keine Kinect erkannt");
                 //this.statusBarText.Text = Properties.Resources.NoKinectReady;
             }
         }
@@ -181,10 +182,10 @@
                         if (aufnahme)
                         {
                             startDetection(skel);
-                            if (cycle > 10 && cycle <= 20)
+                            if (cycle > 5 && cycle <= 15)
                                 file.WriteLine(frame);
 
-                            if (cycle > 20)
+                            if (cycle > 15)
                             {
                                 aufnahme = false;
                                 if (file != null)
@@ -276,7 +277,7 @@
                 cycleEnd = false;
                 ++cycle;
                 cyleTimer.Stop();
-                Console.WriteLine("Cycle " + cycle + " Detected.");
+                println("Cycle " + cycle + " Detected.");
             }
 
         }
@@ -287,13 +288,13 @@
             cycleEnd = false;
             cycle = 0;
             cyleTimer.Stop();
-            Console.WriteLine("Time out");
+            println("Time out");
 
             if (aufnahme)
             {
                 aufnahme = false;
                 AufnahmeStarten.Content = "Aufnahme starten";
-                feedback.Text += "\nAufname wegen timeout gestoppt.";
+                println("Aufname wegen timeout gestoppt.");
                 if (file != null)
                 {
                     file.Close();
@@ -325,7 +326,7 @@
                 String uebergabe = dateiname.Text;
                 if (uebergabe.Equals(""))
                 {
-                    feedback.Text = feedback.Text + "\nBitte geben Sie einen Dateinamen an";
+                    println("Bitte geben Sie einen Dateinamen an");
                 }
                 else
                 {
@@ -507,5 +508,12 @@
                 timeline.Value = skelPoints.GetLength(0) - 1;
             changedValue = false;
         }
+
+        private void println(string s){
+            feedback.Text += s + "\n";
+            feedback.ScrollToEnd();
+        }
+
+
     }
 }
