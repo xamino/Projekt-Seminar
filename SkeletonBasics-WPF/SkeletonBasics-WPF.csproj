@@ -8,7 +8,7 @@
     <ProjectGuid>{8121846D-923E-4BB0-8647-30DA753D156E}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Samples.Kinect.SkeletonBasics</RootNamespace>
+    <RootNamespace>PJS.Skeleton</RootNamespace>
     <AssemblyName>SkeletonBasics-WPF</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
@@ -61,6 +61,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Player.cs" />
+    <Compile Include="Recorder.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -100,7 +102,6 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Kinect.ico" />
-    <Resource Include="Images\Logo.png" />
     <Resource Include="Images\Status.png" />
     <Resource Include="Images\CheckedHover.png" />
     <Resource Include="Images\CheckedNormal.png" />

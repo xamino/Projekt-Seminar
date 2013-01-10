@@ -1,13 +1,14 @@
 ﻿namespace PJS.Skeleton
 {
     using System;
-    using System.IO;
     using System.Windows;
+    using System.IO;
     using System.Windows.Media;
     using Microsoft.Kinect;
     using Microsoft.Win32;
     using System.Globalization;
     using System.Windows.Threading;
+
 
     /// Interaction logic for MainWindow.xaml
     public partial class MainWindow : Window
@@ -28,9 +29,6 @@
         /// Drawing image that we will display
         private DrawingImage imageSource;
 
-        private Point[,] skelPoints;
-
-
         private JointType[] types = { JointType.Head,
                                       JointType.ShoulderCenter, JointType.ShoulderLeft, JointType.ShoulderRight, 
                                       JointType.ElbowLeft, JointType.ElbowRight,
@@ -40,9 +38,12 @@
                                       JointType.KneeLeft, JointType.KneeRight,
                                       JointType.AnkleLeft, JointType.AnkleRight };
 
-        private DispatcherTimer dispatcherTimer;
-        private int playDirection = 0; // -1 back, 0 still, 1 forward
-        private bool changedValue = false;
+        private bool cycleStart = false;
+        private int cycle = 0;
+        private bool cycleEnd = false;
+        private DispatcherTimer cyleTimer;
+        private Recorder rec;
+        private Player player;
 
         /// Initializes a new instance of the MainWindow class.
         public MainWindow()
@@ -52,6 +53,9 @@
 
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
+            rec = new Recorder(this);
+            player = new Player(this, types.Length);
+
             combobox.Items.Add("Seilspringen");
             combobox.Items.Add("Hampelmann");
             combobox.Items.Add("Eigenes");
@@ -119,25 +123,6 @@
             }
         }
 
-        public void FrameReadReady(object sender, EventArgs e)
-        {
-            changedValue = true;
-
-            if (playDirection == 1)
-                if (timeline.Value >= timeline.Maximum)
-                    stopAnimation();
-                else
-                    ++timeline.Value;
-
-            else if (playDirection == -1)
-                if (timeline.Value <= timeline.Minimum)
-                    stopAnimation();
-                else
-                    --timeline.Value;
-
-            changedValue = false;
-        }
-
         /// Event handler for Kinect sensor's SkeletonFrameReady event
         private void SensorSkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
         {
@@ -179,21 +164,16 @@
 
                         }
                         // output to file
-                        if (aufnahme)
+                        if (rec.isRecording())
                         {
                             startDetection(skel);
                             if (cycle > 5 && cycle <= 15)
-                                file.WriteLine(frame);
+                                rec.record(frame);
 
                             if (cycle > 15)
                             {
-                                aufnahme = false;
-                                if (file != null)
-                                {
-                                    file.Close();
-                                }
+                                rec.stopRecording();
                                 cycle = 0;
-                                AufnahmeStarten.Content = "Aufnahme starten";
                             }
                         }
                         // Note: draw frame here
@@ -202,12 +182,6 @@
                 }
             }
         }
-
-
-        private bool cycleStart = false;
-        private int cycle = 0;
-        private bool cycleEnd = false;
-        private DispatcherTimer cyleTimer;
 
         // based on meters, timer limit missing
         private void startDetection(Skeleton skel)
@@ -290,15 +264,10 @@
             cyleTimer.Stop();
             println("Time out");
 
-            if (aufnahme)
+            if (rec.isRecording())
             {
-                aufnahme = false;
-                AufnahmeStarten.Content = "Aufnahme starten";
+                rec.stopRecording();
                 println("Aufname wegen timeout gestoppt.");
-                if (file != null)
-                {
-                    file.Close();
-                }
             }
 
         }
@@ -317,110 +286,11 @@
             return retArr;
         }
 
-        StreamWriter file;
-        bool aufnahme = false;
-        private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
-        {
-            if (AufnahmeStarten.Content.Equals("Aufnahme starten"))
-            {
-                String uebergabe = dateiname.Text;
-                if (uebergabe.Equals(""))
-                {
-                    println("Bitte geben Sie einen Dateinamen an");
-                }
-                else
-                {
-                    file = new StreamWriter(uebergabe + combobox.SelectedValue + ".txt");
-                    AufnahmeStarten.Content = "Aufnahme beenden";
-                    aufnahme = true;
-                }
-            }
-            else
-            {
-                AufnahmeStarten.Content = "Aufnahme starten";
-                aufnahme = false;
-                if (file != null)
-                    file.Close();
 
-            }
-        }
-
-        // loads a textfile containing animation data and puts it in the skelPoints array.
-        private void loadAnimation_Click(object sender, RoutedEventArgs e)
-        {
-            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-
-            // Set filter for file extension and default file extension
-            dlg.DefaultExt = ".txt";
-            dlg.Filter = "Text documents (.txt)|*.txt";
-
-            // Display OpenFileDialog by calling ShowDialog method
-            Nullable<bool> result = dlg.ShowDialog();
-
-            // Get the selected file name and display in a TextBox
-            if (result == true)
-            {
-                // Open document
-                string filename = dlg.FileName;
-                openAnimationPath.Text = filename;
-
-                StreamReader stream = new StreamReader(filename);
-
-                string framesString = string.Empty;
-
-                while (!stream.EndOfStream)
-                {
-                    framesString += stream.ReadLine() + ";";
-                }
-
-                string[] frames = framesString.Split(';');
-
-                skelPoints = new Point[frames.Length - 1, types.Length];
-                for (int i = 0; i < frames.Length - 1; i++)
-                {
-                    string[] points = frames[i].Split(',');
-                    for (int j = 0, k = 0; j + 2 < points.Length; k++, j += 3)
-                    {
-                        skelPoints[i, k] = new Point(double.Parse(points[j].Replace('.', ',')), double.Parse(points[j + 1].Replace('.', ',')));
-                    }
-                }
-
-                timeline.Maximum = skelPoints.GetLength(0) - 2;
-
-            }
-        }
 
         private Point SkeletonPointToPoint(SkeletonPoint sp)
         {
             return new Point(sp.X, sp.Y);
-        }
-
-        // plays the animation using drawing context.. or not
-        private void playButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (playButton.Content.Equals("Play") && skelPoints != null)
-                playAnimation();
-            else
-                pauseAnimation();
-        }
-
-        private void directionButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (playDirection != -1)
-            {
-                directionButton.Content = "<";
-                playDirection = -1;
-            }
-            else
-            {
-                directionButton.Content = ">";
-                playDirection = 1;
-            }
-        }
-
-        private void stopButton_Click(object sender, RoutedEventArgs e)
-        {
-            stopAnimation();
         }
 
         /**
@@ -450,68 +320,63 @@
             }
         }
 
+        internal void println(string p)
+        {
+            feedback.Text += p + "\n";
+            feedback.ScrollToEnd();
+        }
+        // loads a textfile containing animation data and puts it in the skelPoints array.
+        private void loadAnimation_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+
+            // Set filter for file extension and default file extension
+            dlg.DefaultExt = ".txt";
+            dlg.Filter = "Text documents (.txt)|*.txt";
+
+            // Display OpenFileDialog by calling ShowDialog method
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Get the selected file name and display in a TextBox
+            if (result == true)
+            {
+                // Open document
+                string filename = dlg.FileName;
+                openAnimationPath.Text = filename;
+
+                player.load(filename);
+            }
+        }
+
+        // plays the animation using drawing context.. or not
+        private void playButton_Click(object sender, RoutedEventArgs e)
+        {
+            player.onPlayClicked();
+        }
+
+        private void directionButton_Click(object sender, RoutedEventArgs e)
+        {
+            player.reverse();
+        }
+
+
+        private void AufnahmeStarten_Click(object sender, RoutedEventArgs e)
+        {
+            rec.onStartClick();
+        }
+
+        private void stopButton_Click(object sender, RoutedEventArgs e)
+        {
+            player.stop();
+        }
+
         private void timeline_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (!changedValue)
-                pauseAnimation();
-            startDetection(skelPoints, (int)timeline.Value);
-            renderSkeleton((int)timeline.Value, skelPoints, true);
-        }
-
-        private void playAnimation()
-        {
-            if (directionButton.Content.Equals(">"))
-                playDirection = 1;
+            if (!player.hasChangedValue())
+                player.pause();
             else
-                playDirection = -1;
-
-            if (dispatcherTimer == null)
-            {
-                dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
-                dispatcherTimer.Tick += new EventHandler(FrameReadReady);
-                dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 50);
-            }
-
-            if (dispatcherTimer != null)
-                dispatcherTimer.Start();
-
-            playButton.Content = "Pause";
-        }
-
-        private void pauseAnimation()
-        {
-            if (dispatcherTimer != null)
-                dispatcherTimer.Stop();
-
-            playDirection = 0;
-
-            playButton.Content = "Play";
-        }
-
-        private void stopAnimation()
-        {
-            if (dispatcherTimer != null)
-            {
-                dispatcherTimer.Stop();
-                dispatcherTimer = null;
-            }
-
-            playButton.Content = "Play";
-
-            playDirection = 0;
-            cycle = 0;
-
-            changedValue = true;
-            if (directionButton.Content.Equals(">"))
-                timeline.Value = 0;
-            else
-                timeline.Value = skelPoints.GetLength(0) - 1;
-            changedValue = false;
-        }
-
-        private void println(string s){
-            feedback.Text += s + "\n";
-            feedback.ScrollToEnd();
+                startDetection(player.getData(), (int)timeline.Value);
+            renderSkeleton((int)timeline.Value, player.getData(), true);
         }
 
 
