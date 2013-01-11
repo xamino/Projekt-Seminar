@@ -56,10 +56,7 @@
             rec = new Recorder(this);
             player = new Player(this, types.Length);
 
-            combobox.Items.Add("Seilspringen");
-            combobox.Items.Add("Hampelmann");
-            combobox.Items.Add("Eigenes");
-            combobox.SelectedItem = "Hampelmann";
+
             println("PJSSkeleton Application\n -----------------------");
             // Starteintrag der Combobox 
 
@@ -376,9 +373,15 @@
                 player.pause();
             else
                 startDetection(player.getData(), (int)timeline.Value);
-            renderSkeleton((int)timeline.Value, player.getData(), true);
+            if(player.getData() != null) renderSkeleton((int)timeline.Value, player.getData(), true);
         }
 
+        private void FpsButton_Click(object sender, RoutedEventArgs e)
+        {
+            int fps = int.Parse(FPSText.Text);
+            if (fps <= 0 || fps > 120) return;
 
+            player.setFrameRate(fps);
+        }
     }
 }

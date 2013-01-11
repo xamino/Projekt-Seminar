@@ -36,7 +36,7 @@ namespace PJS.Skeleton
                 }
                 else
                 {
-                    file = new StreamWriter(uebergabe + mainWindow.combobox.SelectedValue + TXT_FORMAT);
+                    file = new StreamWriter(uebergabe + mainWindow.combobox.SelectedValue + mainWindow.weight.Text + TXT_FORMAT);
                     mainWindow.AufnahmeStarten.Content = STOP_RECORDING;
                     aufnahme = true;
                 }
