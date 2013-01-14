@@ -61,6 +61,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Detector.cs" />
     <Compile Include="Player.cs" />
     <Compile Include="Recorder.cs" />
     <Page Include="MainWindow.xaml">

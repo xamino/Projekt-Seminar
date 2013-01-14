@@ -7,7 +7,6 @@
     using Microsoft.Kinect;
     using Microsoft.Win32;
     using System.Globalization;
-    using System.Windows.Threading;
 
 
     /// Interaction logic for MainWindow.xaml
@@ -20,14 +19,9 @@
         /// Brush used for drawing joints that are currently tracked
         private readonly Brush trackedJointBrush = new SolidColorBrush(Color.FromArgb(255, 68, 192, 68));
 
-        /// Active Kinect sensor
-        private KinectSensor sensor;
-
-        /// Drawing group for skeleton rendering output
-        private DrawingGroup drawingGroup;
-
-        /// Drawing image that we will display
-        private DrawingImage imageSource;
+        private KinectSensor sensor;         /// Active Kinect sensor
+        private DrawingGroup drawingGroup;         /// Drawing group for skeleton rendering output
+        private DrawingImage imageSource;         /// Drawing image that we will display
 
         private JointType[] types = { JointType.Head,
                                       JointType.ShoulderCenter, JointType.ShoulderLeft, JointType.ShoulderRight, 
@@ -38,12 +32,9 @@
                                       JointType.KneeLeft, JointType.KneeRight,
                                       JointType.AnkleLeft, JointType.AnkleRight };
 
-        private bool cycleStart = false;
-        private int cycle = 0;
-        private bool cycleEnd = false;
-        private DispatcherTimer cyleTimer;
         private Recorder rec;
         private Player player;
+        private Detector detector;
 
         /// Initializes a new instance of the MainWindow class.
         public MainWindow()
@@ -55,19 +46,14 @@
         {
             rec = new Recorder(this);
             player = new Player(this, types.Length);
+            detector = new Detector(this);
 
+
+            this.drawingGroup = new DrawingGroup();  // Create the drawing group we'll use for drawing
+            this.imageSource = new DrawingImage(this.drawingGroup); // Create an image source that we can use in our image control
+            Image.Source = this.imageSource;  // Display the drawing using our image control
 
             println("PJSSkeleton Application\n -----------------------");
-            // Starteintrag der Combobox 
-
-            // Create the drawing group we'll use for drawing
-            this.drawingGroup = new DrawingGroup();
-
-            // Create an image source that we can use in our image control
-            this.imageSource = new DrawingImage(this.drawingGroup);
-
-            // Display the drawing using our image control
-            Image.Source = this.imageSource;
 
             foreach (var potentialSensor in KinectSensor.KinectSensors)
             {
@@ -163,15 +149,40 @@
                         // output to file
                         if (rec.isRecording())
                         {
-                            startDetection(skel);
-                            if (cycle > 5 && cycle <= 15)
-                                rec.record(frame);
-
-                            if (cycle > 15)
+                            if (detector.IsTimedOut())
                             {
-                                rec.stopRecording();
-                                cycle = 0;
+                                println("Time out");
+
+                                if (rec.isRecording())    // not nice back referencing
+                                {
+                                    rec.stopRecording(); // not nice back referencing
+                                    println("Aufname wegen timeout gestoppt.");
+                                }
+
+                                return;
                             }
+
+
+                            if (combobox.SelectedIndex == 0) // Hampelmann
+                            {
+                                detector.AnalyseFrame(skel);
+
+                                if (detector.getCyle() > 5 && detector.getCyle() <= 15)
+                                    rec.record(frame);
+
+                                if (detector.getCyle() > 15)
+                                {
+                                    rec.stopRecording();
+
+                                    detector.resetCycle();
+                                }
+                            }
+                            else
+                            {
+                                rec.record(frame);
+                            }
+
+
                         }
                         // Note: draw frame here
                         renderSkeleton(0, this.SkeletonToScreen(copySkel), false);
@@ -180,94 +191,6 @@
             }
         }
 
-        // based on meters, timer limit missing
-        private void startDetection(Skeleton skel)
-        {
-            SkeletonPoint head = skel.Joints[JointType.Head].Position;
-            SkeletonPoint leftWrist = skel.Joints[JointType.WristLeft].Position;
-            SkeletonPoint rightWrist = skel.Joints[JointType.WristRight].Position;
-            SkeletonPoint leftFoot = skel.Joints[JointType.AnkleLeft].Position;
-            SkeletonPoint rightFoot = skel.Joints[JointType.AnkleRight].Position;
-
-            detect(SkeletonPointToPoint(head), SkeletonPointToPoint(leftWrist), SkeletonPointToPoint(rightWrist), SkeletonPointToPoint(leftFoot), SkeletonPointToPoint(rightFoot));
-
-        }
-        private void startDetection(Point[,] skel, int f)
-        {
-            Point head = skel[f, 0];
-            Point leftWrist = skel[f, 6];
-            Point rightWrist = skel[f, 7];
-            Point leftFoot = skel[f, 14];
-            Point rightFoot = skel[f, 15];
-
-            detect(head, leftWrist, rightWrist, leftFoot, rightFoot);
-        }
-
-        private void detect(Point head, Point leftWrist, Point rightWrist, Point leftFoot, Point rightFoot)
-        {
-            // wrists should be above head
-            bool armsUp = leftWrist.Y > head.Y && rightWrist.Y > head.Y ? true : false; // < because coordsystem
-            // arms should be close together
-            bool armsClose = Math.Abs(leftWrist.X - rightWrist.X) < 0.4 ? true : false;
-            // feet should be close together
-            bool feetClose = Math.Abs(rightFoot.X - leftFoot.X) < 0.2 ? true : false;
-
-            //Console.WriteLine("Arms up " + armsUp);
-            //Console.WriteLine("Arms close " + armsClose);
-            //Console.WriteLine("Feet close " + feetClose);
-
-            if (!cycleStart && armsUp && armsClose && feetClose) // detect start
-            {
-                // start of a cycle detected
-                cycleStart = true;
-                if (cyleTimer == null)
-                {
-                    cyleTimer = new DispatcherTimer();
-                    cyleTimer.Tick += new EventHandler(CycleTimout);
-                    cyleTimer.Interval = new TimeSpan(0, 0, 0, 2, 500);
-                }
-
-                if (cyleTimer != null)
-                    cyleTimer.Start();
-
-                //Console.WriteLine("Start det"); 
-            }
-            // Detect end of cycle following a start
-            else if (cycleStart && !armsUp && !armsClose && !feetClose)
-            {
-                cycleEnd = true;
-                cycleStart = false;
-                // Console.WriteLine("End det"); 
-                return;
-            }
-
-
-            if (cycleStart && cycleEnd)
-            {
-                cycleStart = false;
-                cycleEnd = false;
-                ++cycle;
-                cyleTimer.Stop();
-                println("Cycle " + cycle + " Detected.");
-            }
-
-        }
-
-        private void CycleTimout(object sender, EventArgs e)
-        {
-            cycleStart = false;
-            cycleEnd = false;
-            cycle = 0;
-            cyleTimer.Stop();
-            println("Time out");
-
-            if (rec.isRecording())
-            {
-                rec.stopRecording();
-                println("Aufname wegen timeout gestoppt.");
-            }
-
-        }
 
         /// Maps a SkeletonPoint to lie within our render space and converts to Point
         private Point[,] SkeletonToScreen(SkeletonPoint[] skel)
@@ -281,13 +204,6 @@
                 retArr[0, i] = new Point(depth.X, depth.Y);
             }
             return retArr;
-        }
-
-
-
-        private Point SkeletonPointToPoint(SkeletonPoint sp)
-        {
-            return new Point(sp.X, sp.Y);
         }
 
         /**
@@ -317,11 +233,14 @@
             }
         }
 
+        // prints to the output
         internal void println(string p)
         {
             feedback.Text += p + "\n";
             feedback.ScrollToEnd();
         }
+
+
         // loads a textfile containing animation data and puts it in the skelPoints array.
         private void loadAnimation_Click(object sender, RoutedEventArgs e)
         {
@@ -369,17 +288,20 @@
 
         private void timeline_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            // when user changed slider
             if (!player.hasChangedValue())
                 player.pause();
             else
-                startDetection(player.getData(), (int)timeline.Value);
-            if(player.getData() != null) renderSkeleton((int)timeline.Value, player.getData(), true);
+                detector.AnalyseFrame(player.getData(), (int)timeline.Value);
+
+            // render when there is data
+            if (player.getData() != null) renderSkeleton((int)timeline.Value, player.getData(), true);
         }
 
         private void FpsButton_Click(object sender, RoutedEventArgs e)
         {
             int fps = int.Parse(FPSText.Text);
-            if (fps <= 0 || fps > 120) return;
+            if (fps <= 0 || fps > 120) return; // dont allow 0 or high fps values
 
             player.setFrameRate(fps);
         }
