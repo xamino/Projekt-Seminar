@@ -36,6 +36,12 @@ namespace PJS.Skeleton
                 }
                 else
                 {
+
+                    if (file != null) // fix for file overwrite
+                    {
+                        file.Close();
+                    }
+
                     file = new StreamWriter(uebergabe + mainWindow.combobox.SelectedValue + mainWindow.weight.Text + TXT_FORMAT);
                     mainWindow.AufnahmeStarten.Content = STOP_RECORDING;
                     aufnahme = true;

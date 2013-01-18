@@ -153,11 +153,13 @@
                             {
                                 println("Time out");
 
-                                if (rec.isRecording())    // not nice back referencing
+                                if (rec.isRecording()) 
                                 {
-                                    rec.stopRecording(); // not nice back referencing
+                                    rec.stopRecording();
                                     println("Aufname wegen timeout gestoppt.");
                                 }
+
+                                detector.resetTimeout();
 
                                 return;
                             }

@@ -83,8 +83,6 @@ namespace PJS.Skeleton
             //        \ /
             if (!cycleStart && armsUp && armsClose && feetClose) 
             {
-                timedOut = false;
-
                 // start of a cycle detected
                 cycleStart = true;
                 if (cyleTimer == null)
@@ -148,5 +146,10 @@ namespace PJS.Skeleton
             return new Point(sp.X, sp.Y);
         }
 
+
+        internal void resetTimeout()
+        {
+            timedOut = false;
+        }
     }
 }
