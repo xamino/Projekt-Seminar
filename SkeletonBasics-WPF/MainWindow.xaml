@@ -24,7 +24,7 @@
                 <TextBox x:Name="dateiname" Height="22" TextWrapping="Wrap" Text="Dateiname" Margin="0,0,0,5"/>
                 <ComboBox x:Name="combobox" SelectedIndex="0" Margin="0,0,0,5">
                     <System:String>Hampelmann</System:String>
-                    <System:String>Seilhüpfen</System:String>
+                    <System:String>Seilhuepfen</System:String>
                     <System:String>Eigene</System:String>
                 </ComboBox>
                 <StackPanel Orientation="Horizontal">
